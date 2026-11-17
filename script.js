@@ -52,14 +52,115 @@ document.querySelector('#btn-login').addEventListener('click', () => {
     }
 });
 
-// 5. LÃ³gica de SubmissÃ£o de Cadastro (Onde aplicaremos as RegEx)
-document.querySelector('#form-cadastro').addEventListener('submit', (e) => {
+// 5. Validação e envio do cadastro para a API
+document.querySelector('#form-cadastro').addEventListener('submit', async (e) => {
     e.preventDefault();
 
-    // TODO: Os alunos vÃ£o validar os campos com RegEx e conferir se as senhas coincidem.
-    // ApÃ³s a validaÃ§Ã£o com sucesso, transita para a tela de anÃ¡lise:
-    secaoCadastro.style.display = 'none';
-    secaoSucesso.style.display = 'block';
+    const nome = document.querySelector('#cad-nome');
+    const cpf = document.querySelector('#cad-cpf');
+    const email = document.querySelector('#cad-email');
+    const celular = document.querySelector('#cad-celular');
+    const cep = document.querySelector('#cad-cep');
+    const endereco = document.querySelector('#cad-endereco');
+    const cidade = document.querySelector('#cad-cidade');
+    const estado = document.querySelector('#cad-estado');
+    const senha = document.querySelector('#cad-senha');
+    const confirmaSenha = document.querySelector('#cad-confirma-senha');
+    const cadastroErro = document.querySelector('#cadastro-erro');
+    const btnCadastrar = document.querySelector('#btn-cadastrar');
+
+    // Expressões regulares pedidas no enunciado
+    const regexNome = /^[A-Za-zÀ-ÖØ-öø-ÿ]+(?:\s+[A-Za-zÀ-ÖØ-öø-ÿ]+)+$/;
+    const regexCpf = /^(?:\d{3}\.\d{3}\.\d{3}-\d{2}|\d{11})$/;
+    const regexEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const regexCelular = /^(?:\(\d{2}\)|\d{2})\s?\d{5}-?\d{4}$/;
+    const regexCep = /^\d{5}-?\d{3}$/;
+    const regexSenha = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
+
+    // Mostra o erro e leva o cursor para o campo que precisa ser corrigido
+    function mostrarErro(mensagem, campo) {
+        cadastroErro.textContent = mensagem;
+        cadastroErro.style.display = 'block';
+        campo.focus();
+    }
+
+    cadastroErro.style.display = 'none';
+
+    if (!regexNome.test(nome.value.trim())) {
+        mostrarErro('Digite o nome completo, com nome e sobrenome.', nome);
+        return;
+    }
+
+    if (!regexCpf.test(cpf.value.trim())) {
+        mostrarErro('Digite um CPF com 11 dígitos, com ou sem pontuação.', cpf);
+        return;
+    }
+
+    if (!regexEmail.test(email.value.trim())) {
+        mostrarErro('Digite um e-mail válido.', email);
+        return;
+    }
+
+    if (!regexCelular.test(celular.value.trim())) {
+        mostrarErro('Digite um celular com DDD e 11 dígitos.', celular);
+        return;
+    }
+
+    if (!regexCep.test(cep.value.trim())) {
+        mostrarErro('Digite um CEP com 8 dígitos, com ou sem hífen.', cep);
+        return;
+    }
+
+    if (!regexSenha.test(senha.value)) {
+        mostrarErro('A senha deve ter 8 caracteres, com letra maiúscula, minúscula e número.', senha);
+        return;
+    }
+
+    if (confirmaSenha.value !== senha.value) {
+        mostrarErro('A confirmação da senha deve ser igual à senha.', confirmaSenha);
+        return;
+    }
+
+    // Objeto que será convertido para JSON e enviado para a API
+    const dadosCliente = {
+        nome: nome.value.trim(),
+        cpf: cpf.value.trim(),
+        email: email.value.trim(),
+        celular: celular.value.trim(),
+        cep: cep.value.trim(),
+        endereco: endereco.value.trim(),
+        cidade: cidade.value.trim(),
+        estado: estado.value.trim(),
+        senha: senha.value
+    };
+
+    try {
+        btnCadastrar.disabled = true;
+        btnCadastrar.textContent = 'Enviando...';
+
+        const resposta = await fetch('https://senac-bank-api.dennislopes.com.br/api/clientes', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(dadosCliente)
+        });
+
+        if (!resposta.ok) {
+            throw new Error('Não foi possível concluir o cadastro. Tente novamente.');
+        }
+
+        localStorage.removeItem('senac_rascunho_cadastro');
+        e.target.reset();
+        secaoCadastro.style.display = 'none';
+        secaoSucesso.style.display = 'block';
+    } catch (erro) {
+        cadastroErro.textContent = erro.message;
+        cadastroErro.style.display = 'block';
+    } finally {
+        btnCadastrar.disabled = false;
+        btnCadastrar.textContent = 'Concluir Registo';
+    }
 });
 
 // 6. BotÃ£o para voltar ao inÃ­cio a partir da tela de sucesso
@@ -90,6 +191,7 @@ if (formCadastro) {
      cpf: document.querySelector('#cad-cpf').value,
      email: document.querySelector('#cad-email').value,
      celular: document.querySelector('#cad-celular').value,
+     cep: document.querySelector('#cad-cep').value,
      endereco: document.querySelector('#cad-endereco').value,
      cidade: document.querySelector('#cad-cidade').value,
      estado: document.querySelector('#cad-estado').value
@@ -124,17 +226,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
    });
    
-   // 10. Limpeza ao submeter o formulário com sucesso
-if (formCadastro) {
-    formCadastro.addEventListener('submit', (e) => {
-    // Use o preventDefault() para evitar o recarregamento da página.
-    // Remova o rascunho do localStorage
-    // Resete o formulário
-    secaoCadastro.style.display = 'none';
-    secaoSucesso.style.display = 'block';
-    });
-   }
-
 // 11. Botão de descarte manual do rascunho
 const btnLimparRascunho = document.querySelector('#link-limpar-rascunho');
 if (btnLimparRascunho) {
